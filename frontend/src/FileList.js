@@ -10,7 +10,7 @@ function FileList({ token, onLogout }) {
 
   useEffect(() => {
     fetchFiles();
-    const interval = setInterval(fetchProcessed, 5000); // Poll every 5 seconds
+    const interval = setInterval(fetchProcessed, 5000);
     return () => clearInterval(interval);
   }, []);
 

@@ -1,0 +1,18 @@
+
+services:
+  disk-saver:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    image: video-optimizer
+    volumes:
+      - /Users/tinkeshwar/Downloads/in:/input
+      - /Users/tinkeshwar/Downloads/in:/output
+      - /Users/tinkeshwar/Downloads/config:/config
+      #- /dev/dri:/dev/dri
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "5002:5000"
+    # devices:
+      # - /dev/dri:/dev/dri
