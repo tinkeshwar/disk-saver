@@ -66,6 +66,19 @@ function queueFiles(fileIds) {
   });
 }
 
+function getQueuedFiles() {
+  return new Promise((resolve, reject) => {
+    db.all(
+      `SELECT id, filename, original_path, original_size, created_at FROM files WHERE queue_status = 'confirmed'`,
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+}
+
+
 function getNextQueuedFile() {
   return new Promise((resolve, reject) => {
     db.get(
@@ -86,6 +99,18 @@ function updateProcessing(fileId, newPath, newSize) {
       (err) => {
         if (err) reject(err);
         else resolve();
+      }
+    );
+  });
+}
+
+function getProcessingFiles() {
+  return new Promise((resolve, reject) => {
+    db.all(
+      `SELECT id, filename, original_path, original_size, new_size, created_at, processed_at FROM files WHERE queue_status = 'processed'`,
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
       }
     );
   });
@@ -135,8 +160,10 @@ module.exports = {
   addFile,
   getPendingFiles,
   queueFiles,
+  getQueuedFiles,
   getNextQueuedFile,
   updateProcessing,
+  getProcessingFiles,
   updateReplaced,
   updateDiscarded,
   updateFailed

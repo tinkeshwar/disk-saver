@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const path = require('path');
 const { login } = require('../controllers/auth.controller');
-const { scannedFiles } = require('../controllers/file.controller');
+const { scannedFiles, processFileIntoQueue, queuedFiles, processedFiles } = require('../controllers/file.controller');
 const { verifyToken } = require('../middlewares/auth.middleware');
 
 router.get(/^(?!\/api).*/, (_req, res) => {
@@ -18,8 +18,35 @@ router.post('/api/login', (req, res) => {
   }
 });
 
-router.get('/api/files', verifyToken, async (req, res) => {
+router.get('/api/files', verifyToken, async (_req, res) => {
   const files = await scannedFiles();
+  if (files.length > 0) {
+    res.json(files);
+  } else {
+    res.status(404).json({ error: 'No files found' });
+  }
+});
+
+router.post('/api/queue', verifyToken, async (req, res) => {
+  const { fileIds } = req.body;
+  if (await processFileIntoQueue([...fileIds])) {
+    res.json({ message: 'Files queued for processing' });
+  } else {
+    res.status(404).json({ error: 'No files found' });
+  }
+});
+
+router.get('/api/queue', verifyToken, async (_req, res) => {
+  const files = await queuedFiles();
+  if (files.length > 0) {
+    res.json(files);
+  } else {
+    res.status(404).json({ error: 'No files found' });
+  }
+});
+
+router.get('/api/processed', verifyToken, async (_req, res) => {
+  const files = await processedFiles();
   if (files.length > 0) {
     res.json(files);
   } else {

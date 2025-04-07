@@ -1,20 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_HOST } from '../configs/constant';
-import { Flex, Button, Text, Table } from '@radix-ui/themes';
-import { ExitIcon } from "@radix-ui/react-icons"
+import { Flex, Button, Text, Table, Box, Heading } from '@radix-ui/themes';
+import { CheckIcon, Cross2Icon, ExitIcon } from "@radix-ui/react-icons"
 
 function FileList({ token, onLogout }) {
   const [files, setFiles] = useState([]);
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [processingFiles, setProcessingFiles] = useState([]);
   const [processedFiles, setProcessedFiles] = useState([]);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [currentProcessed, setCurrentProcessed] = useState(null);
 
   useEffect(() => {
     fetchFiles();
-    // const interval = setInterval(fetchProcessed, 5000);
-    // return () => clearInterval(interval);
+    fetchProcessingFiles();
+    const interval = setInterval(fetchProcessed, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchFiles = async () => {
@@ -28,6 +27,17 @@ function FileList({ token, onLogout }) {
     }
   };
 
+  const fetchProcessingFiles = async () => {
+    try {
+      const response = await axios.get(`${API_HOST}/api/queue`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setProcessingFiles(response.data);
+    } catch (err) {
+      console.error('Error fetching files:', err);
+    }
+  };
+
   const fetchProcessed = async () => {
     try {
       const response = await axios.get(`${API_HOST}/api/processed`, {
@@ -35,31 +45,21 @@ function FileList({ token, onLogout }) {
       });
       const newProcessed = response.data;
       setProcessedFiles(newProcessed);
-      if (newProcessed.length > 0 && !showConfirm) {
-        setCurrentProcessed(newProcessed[0]);
-        setShowConfirm(true);
-      }
     } catch (err) {
       console.error('Error fetching processed files:', err);
     }
   };
 
-  const handleSelect = (id) => {
-    setSelectedFiles((prev) =>
-      prev.includes(id) ? prev.filter((fid) => fid !== id) : [...prev, id]
-    );
-  };
-
-  const handleQueue = async () => {
+  const handleQueue = async (id) => {
     try {
       await axios.post(
-        '/api/queue',
-        { fileIds: selectedFiles },
+        `${API_HOST}/api/queue`,
+        { fileIds: [id] },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       alert('Files queued for processing');
-      setSelectedFiles([]);
       fetchFiles();
+      fetchProcessingFiles();
     } catch (err) {
       console.error('Error queuing files:', err);
     }
@@ -74,34 +74,87 @@ function FileList({ token, onLogout }) {
         <Button onClick={onLogout} variant="soft" color="red"> <ExitIcon/> </Button>
       </Flex>
 
-      <Table.Root>
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>Path</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>Size</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell>Action</Table.ColumnHeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {files.map((file) => (
-            <Table.Row key={file.id}>
-              <Table.Cell>{file.name}</Table.Cell>
-              <Table.Cell>{file.path}</Table.Cell>
-              <Table.Cell>{file.size.toFixed(2)} MB</Table.Cell>
-              <Table.Cell>
-                
-              </Table.Cell>
+      {(files.length > 0) && <Box p="4">
+        <Heading>New Scanned Files</Heading>
+        <Table.Root size="1">
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Path</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Size</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Action</Table.ColumnHeaderCell>
             </Table.Row>
-          ))}
-        </Table.Body>
-      </Table.Root>
-      {showConfirm && currentProcessed && (
-        <Flex justify="center" align="center" p="3" style={{ borderTop: '1px solid #e5e7eb' }}>
-          <Text size="4" weight="bold">Processing {currentProcessed.name}</Text>
-          <Button onClick={() => { setShowConfirm(false); setCurrentProcessed(null); }}>Close</Button>
-        </Flex>
-      )}
+          </Table.Header>
+          <Table.Body>
+            {files.map((file) => (
+              <Table.Row key={file.id}>
+                <Table.Cell>{file.name}</Table.Cell>
+                <Table.Cell>{file.path}</Table.Cell>
+                <Table.Cell>{file.size.toFixed(2)} MB</Table.Cell>
+                <Table.Cell>
+                  <Flex gap="2">
+                    <Button size="1" color="green" onClick={() => handleQueue(file.id)}><CheckIcon/></Button>
+                    <Button size="1" color="red" onClick={() => handleQueue(file.id)}><Cross2Icon/></Button>
+                  </Flex>
+                </Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table.Root>
+      </Box>}
+
+      {(processingFiles.length > 0) && <Box p="4">
+        <Heading>Files In Queue</Heading>
+        <Table.Root size="1">
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Path</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Size</Table.ColumnHeaderCell>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {processingFiles.map((file) => (
+              <Table.Row key={file.id}>
+                <Table.Cell>{file.name}</Table.Cell>
+                <Table.Cell>{file.path}</Table.Cell>
+                <Table.Cell>{file.size.toFixed(2)} MB</Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table.Root>
+      </Box>}
+
+      {(processedFiles.length > 0) && <Box p="4">
+        <Heading>File Ready To Move</Heading>
+        <Table.Root size="1">
+          <Table.Header>
+            <Table.Row>
+              <Table.ColumnHeaderCell>Name</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Path</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Old Size</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>New Size</Table.ColumnHeaderCell>
+              <Table.ColumnHeaderCell>Action</Table.ColumnHeaderCell>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body>
+            {processedFiles.map((file) => (
+              <Table.Row key={file.id}>
+                <Table.Cell>{file.name}</Table.Cell>
+                <Table.Cell>{file.path}</Table.Cell>
+                <Table.Cell>{file.size.toFixed(2)} MB</Table.Cell>
+                <Table.Cell>{file.size.toFixed(2)} MB</Table.Cell>
+                <Table.Cell>
+                  <Flex gap="2">
+                    <Button size="1" color="green" onClick={() => handleQueue(file.id)}><CheckIcon/></Button>
+                    <Button size="1" color="red" onClick={() => handleQueue(file.id)}><Cross2Icon/></Button>
+                  </Flex>
+                </Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table.Root>
+      </Box>}
     </Flex>  
   )
 }
