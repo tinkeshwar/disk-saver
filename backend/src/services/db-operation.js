@@ -1,13 +1,16 @@
 const sqlite3 = require('sqlite3').verbose();
-const { DB_NAME } = require('../configs/constant');
+const path = require('path');
+const { DB_NAME, NODE_ENV } = require('../configs/constant');
 
-const db = new sqlite3.Database(`/config/${DB_NAME}`);
+const dbPath = NODE_ENV === 'development' ? path.resolve(__dirname, `../../${DB_NAME}`) : `/config/${DB_NAME}`;
+const db = new sqlite3.Database(dbPath);
 
 function initDb() {
   return new Promise((resolve, reject) => {
     db.run(`
       CREATE TABLE IF NOT EXISTS files (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        filename TEXT,
         original_path TEXT UNIQUE,
         original_size REAL,
         new_path TEXT,
@@ -24,11 +27,11 @@ function initDb() {
   });
 }
 
-function addFile(filePath, size) {
+function addFile(filePath, name, size) {
   return new Promise((resolve, reject) => {
     db.run(
-      `INSERT OR IGNORE INTO files (original_path, original_size, created_at) VALUES (?, ?, ?)`,
-      [filePath, size, new Date().toISOString()],
+      `INSERT OR IGNORE INTO files (filename, original_path, original_size, created_at) VALUES (?, ?, ?, ?)`,
+      [name, filePath, size, new Date().toISOString()],
       (err) => {
         if (err) reject(err);
         else resolve();
@@ -40,7 +43,7 @@ function addFile(filePath, size) {
 function getPendingFiles() {
   return new Promise((resolve, reject) => {
     db.all(
-      `SELECT id, original_path, original_size FROM files WHERE queue_status = 'pending'`,
+      `SELECT id, filename, original_path, original_size, created_at FROM files WHERE queue_status = 'pending'`,
       (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
